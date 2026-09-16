@@ -114,14 +114,23 @@ def main() -> int:
         for source_index in order:
             x, y, visibility = flat[source_index * 3: source_index * 3 + 3]
             visibility = int(visibility)
-            keypoints.append((0.0, 0.0, OUTSIDE) if visibility == OUTSIDE
+            outside_image = x < 0 or x > width or y < 0 or y > height
+            keypoints.append((0.0, 0.0, OUTSIDE)
+                             if visibility == OUTSIDE or outside_image
                              else (x / width, y / height, visibility))
 
         box = annotation.get("bbox")
         if box and box[2] > 0 and box[3] > 0:
             x, y, box_width, box_height = box
-            normalized = ((x + box_width / 2) / width, (y + box_height / 2) / height,
-                          box_width / width, box_height / height)
+            right = min(width, x + box_width)
+            bottom = min(height, y + box_height)
+            left = max(0.0, x)
+            top = max(0.0, y)
+            if right <= left or bottom <= top:
+                skipped += 1
+                continue
+            normalized = ((left + right) / 2 / width, (top + bottom) / 2 / height,
+                          (right - left) / width, (bottom - top) / height)
         else:
             marked = [(x, y) for x, y, visibility in keypoints if visibility != OUTSIDE]
             if not marked:
